@@ -1,0 +1,42 @@
+let
+  # set the GHC version for the entire project.
+  ghc-version = "ghc984";
+
+  sources = import ./sources.nix;
+  nixpkgs = import sources.nixpkgs { overlays = [ overlay ]; };
+  packages = import ./packages.nix;
+
+  gitignore = nixpkgs.nix-gitignore.gitignoreSourcePure [ ../.gitignore ];
+
+  overlay = final: prev:
+    let
+      inherit (prev.haskell.lib)
+        overrideCabal
+        doCheck
+        ;
+
+      haskell-overrides = hfinal: hprev:
+        let
+          packageOverrides = {
+            postgresql-libpq-configure = overrideCabal
+              (drv: {
+                librarySystemDepends = (drv.librarySystemDepends or [ ]) ++ [ prev.postgresql ];
+              })
+              hprev.postgresql-libpq-configure;
+          };
+
+          makePackage = name: path:
+            let pkg = hfinal.callCabal2nix name (gitignore path) { };
+            in doCheck pkg;
+        in
+        builtins.mapAttrs makePackage packages // packageOverrides;
+    in
+    {
+      # This will become the main package set for the project. In a `nix-shell`,
+      # this is what we'll have access to.
+      haskellPackages = prev.haskell.packages.${ghc-version}.override {
+        overrides = haskell-overrides;
+      };
+    };
+in
+nixpkgs

@@ -1,0 +1,17 @@
+packages:
+    core/
+
+    backend/backend-api
+    backend/backend-server
+
+    storage/storage
+    storage/storage-memory
+    storage/storage-postgresql
+
+-- only build documentation on demand.
+documentation: False
+
+package *
+  documentation: False
+
+multi-repl: True
